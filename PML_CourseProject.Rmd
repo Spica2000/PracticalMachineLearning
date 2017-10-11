@@ -97,7 +97,7 @@ plot(modFitBoost)
 prediction <- predict(modFitBoost, testing)
 ```
 
-##Predicting on the taste sample
+##Predicting on the test sample
 ```{r}
 #Random forest
 predictionRF <- predict(modFitRF, test)
