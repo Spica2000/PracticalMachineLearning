@@ -1,0 +1,108 @@
+---
+title: "Practical machine learning Course Project"
+author: "Vadim"
+date: 'October, 08 2017'
+output: html_document
+---
+
+```{r setup, include=FALSE, results='hide'}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##Background
+The goal of this project is to predict the manner in which they performed the exercise and machine learning classification of accelerometers data on the belt, forearm, arm, and dumbell of 6 participants.In training data “classe” is the outcome variable in the training set using predictor variables to predict 20 different test cases.The data for this project come from this source is: http://groupware.les.inf.puc-rio.br/har.
+
+The “classe” variable which classifies the correct and incorrect outcomes of A, B, C, D, and E categories. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+###Libraries
+```{r, results='hide', warning=FALSE}
+invisible(library(AppliedPredictiveModeling))
+invisible(library(rpart))
+invisible(library(rpart.plot))
+invisible(library(rattle))
+invisible(library(ElemStatLearn))
+invisible(library(pgmm))
+invisible(library(caret))
+invisible(library(e1071))
+invisible(library(gbm))
+invisible(library(randomForest))
+invisible(library(plyr))
+```
+
+##Loading the dataset
+```{r, cache=TRUE}
+setwd("C:/Users/Vadim/Desktop/DataScience_course/Practical machine learning/CourseProject")
+# Download and reading the training data
+download.file(url = "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", 
+              destfile = "./pml-training.csv")
+train <- read.csv("./pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+# Download and reading the testing data
+download.file(url = "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+              destfile = "./pml-testing.csv")
+test <- read.csv("./pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+```
+
+##Cleaning the dataset
+```{r}
+# Use only variables used in testing cases.
+useful <- names(test[,colSums(is.na(test)) == 0])[8:59]
+train <- train[,c(useful,"classe")]
+test <- test[,c(useful,"problem_id")]
+```
+
+## Subsetting the dataset
+
+We will split our data into a training data set (60%) and a testing data set (40%)
+```{r}
+set.seed(12345)
+inTrain <- createDataPartition(train$classe, p=0.6, list=FALSE)
+training <- train[inTrain,]
+testing <- train[-inTrain,]
+```
+
+## Desision tree model
+
+Try to using Decision Tree.
+```{r}
+#Training the model
+modFitDT <- rpart(classe ~ ., data = training, method="class",
+                  control = rpart.control(method = "cv", number = 10))
+fancyRpartPlot(modFitDT)
+#Predictiong with the model
+prediction <- predict(modFitDT, testing, type = "class")
+confusionMatrix(prediction, testing$classe)
+```
+Accuracy is not very high, 72%.
+
+## Random forest model
+
+```{r, cache=TRUE}
+#Training the model
+modFitRF <- randomForest(classe ~ ., data = training, method = "rf", importance = T, trControl = trainControl(method = "cv", classProbs=TRUE,savePredictions=TRUE,allowParallel=TRUE, number = 10))
+plot(modFitRF)
+#Predicting wit the model
+prediction <- predict(modFitRF, testing, type = "class")
+confusionMatrix(prediction, testing$classe)
+```
+The random forest model performed well with accuracy 99%.
+
+##Boosting model
+
+```{r, cache=TRUE}
+#Training the model
+modFitBoost <- train(classe ~ ., method = "gbm", data = training,
+                    verbose = F, trControl = trainControl(method = "cv", number = 10))
+modFitBoost
+plot(modFitBoost)
+#Predicting wit the model
+prediction <- predict(modFitBoost, testing)
+```
+
+##Predicting on the taste sample
+```{r}
+#Random forest
+predictionRF <- predict(modFitRF, test)
+predictionRF
+#Boosting
+predictionBoost <- predict(modFitBoost, test)
+predictionBoost
+```
